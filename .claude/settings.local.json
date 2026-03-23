@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:ips.rootstock.io)",
+      "WebFetch(domain:dev.rootstock.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:rootstock.io)"
+    ]
+  }
+}

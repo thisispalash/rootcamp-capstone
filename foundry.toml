@@ -2,5 +2,13 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+test = "test"
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+# Compiler
+solc = "0.8.28"
+evm_version = "cancun"
+
+# fs permissions
+fs_permissions = [
+  { access = "read", path = "data/" },
+]

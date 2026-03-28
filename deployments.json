@@ -1,0 +1,27 @@
+{
+  "31": {
+    "dictionaries": {
+      "adjectives": {
+        "address": "0x03AfbdEfA11cf56fC7d0bd6F04fF23A0c72C22EC",
+        "count": 1200,
+        "data": "0x151Cb2fB60Eb76bE30A68991AB8A667eF445dbb8",
+        "size": 19200
+      },
+      "animals": {
+        "address": "0x002CdA7f3A37f2dbE949c1e72f584Ded51bE2f18",
+        "count": 350,
+        "data": "0x180c6Cd17A8Eb4F6Ae8F7aCf6Bb17C8248acB7BB",
+        "size": 5600
+      },
+      "colors": {
+        "address": "0x8e601AAEcB2078DC7228541DF17A1dC54C271a5d",
+        "count": 50,
+        "data": "0x14b236AAe5CeeA87267b02e314eddB260e495e7F",
+        "size": 800
+      }
+    },
+    "gasUsed": 23590569,
+    "khaaliNamesV1": "0x0325F6f793525D18cfb665607031f3DC24092632",
+    "timestamp": 1774686763
+  }
+}

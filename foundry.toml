@@ -9,6 +9,10 @@ script = "script"
 solc = "0.8.28"
 evm_version = "london"
 
+# Optimizer
+optimizer = true
+optimizer_runs = 200
+
 # fs permissions
 fs_permissions = [
   { access = "read", path = "data/" },
@@ -18,5 +22,13 @@ fs_permissions = [
 [profile.default.env]
 dotenv = ".env"
 
+[profile.production]
+via_ir = true
+optimizer_runs = 2000
+
 [rpc_endpoints]
+rsk_testnet = "${RSK_TESTNET_RPC_URL}"
 anvil = "http://127.0.0.1:8545"
+
+[etherscan]
+rsk_testnet = { key = "${RSK_TESTNET_API_KEY}", url = "https://rootstock-testnet.blockscout.com/api" }

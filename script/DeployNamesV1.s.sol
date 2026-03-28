@@ -18,8 +18,10 @@ contract DeployNamesV1 is Script {
     uint256 constant ANIMAL_COUNT = 350;
     uint256 constant ADJECTIVE_COUNT = 1200;
 
+    uint256 immutable DEPLOYER_KEY = vm.envUint("DEPLOYER_PRIVATE_KEY");
+
     function run() public {
-        vm.startBroadcast();
+        vm.startBroadcast(DEPLOYER_KEY);
         uint256 gasBefore = gasleft();
 
         (address colorPointer, uint256 colorDictSize) = _deployDictionary("data/colors.txt", COLOR_COUNT);

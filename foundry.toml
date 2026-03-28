@@ -30,5 +30,13 @@ optimizer_runs = 2000
 rsk_testnet = "${RSK_TESTNET_RPC_URL}"
 anvil = "http://127.0.0.1:8545"
 
-[etherscan]
-rsk_testnet = { key = "${RSK_TESTNET_API_KEY}", url = "https://rootstock-testnet.blockscout.com/api" }
+# Explorer Contract Verification #
+# forge verify-contract \
+#   --constructor-args <constructor_args> \
+#   --chain-id 31 \
+#   --watch \
+#   --compiler-version v0.8.28 \
+#   --verifier custom \
+#   --verifier-url https://be.explorer.testnet.rootstock.io/api/v3/etherscan \
+#   <address> \
+#   <filename>:<contract_name>

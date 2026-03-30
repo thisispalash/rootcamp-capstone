@@ -8,14 +8,14 @@ onchain dictionaries. This project is inspired by the
 
   <summary>Deployment Information</summary>
 
-> Deployer :: [`0x96E03e38AD4b5eF728f4c5f305EDDBB509B652d0`](https://explorer.testnet.rootstock.io/address/0x96E03e38AD4b5eF728f4c5f305EDDBB509B652d0)
+> Deployer :: [`0x66E9e64D743B7678331B1617Bf67b238897E04F8`](https://explorer.testnet.rootstock.io/address/0x66E9e64D743B7678331B1617Bf67b238897E04F8)
 > 
 > | Contract | Address |
 > | :------- | :-----: |
-> | [khaaliNamesV1](./src/khaaliNamesV1.sol) | [`0x0325F6f793525D18cfb665607031f3DC24092632`](https://explorer.testnet.rootstock.io/address/0x0325F6f793525d18CFb665607031f3Dc24092632) |
-> | [ColorDictionaryV1](./src/dictionary/ColorDictionaryV1.sol) | [`0x8e601AAecB2078DC7228541dF17a1dC54C271a5d`](https://explorer.testnet.rootstock.io/address/0x8e601AAecB2078DC7228541dF17a1dC54C271a5d) |
-> | [AnimalDictionaryV1](./src/dictionary/AnimalDictionaryV1.sol) | [`0x002CdA7f3A37f2dbE949c1e72f584Ded51bE2f18`](https://explorer.testnet.rootstock.io/address/0x002CdA7f3A37f2dbE949c1e72f584Ded51bE2f18) |
-> | [AdjectiveDictionaryV1](./src/dictionary/AdjectiveDictionaryV1.sol) | [`0x03AfbdEfA11cf56fC7d0bd6F04fF23A0c72C22EC`](https://explorer.testnet.rootstock.io/address/0x03AfbdEfA11cf56fC7d0bd6F04fF23A0c72C22EC) |
+> | [khaaliNamesV1](./src/khaaliNamesV1.sol) | [`0xE0fa3a53ebA5686D39a102abCC4b4805eE7eCe36`](https://explorer.testnet.rootstock.io/address/0xE0fa3a53ebA5686D39a102abCC4b4805eE7eCe36?tab=contract) |
+> | [ColorDictionaryV1](./src/dictionary/ColorDictionaryV1.sol) | [`0x34aA190335f86816e61E490C944F35E678a80c62`](https://explorer.testnet.rootstock.io/address/0x34aA190335f86816e61E490C944F35E678a80c62) |
+> | [AnimalDictionaryV1](./src/dictionary/AnimalDictionaryV1.sol) | [`0x390F8020A5F93F47FE78482c58535653c32c6F5F`](https://explorer.testnet.rootstock.io/address/0x390F8020A5F93F47FE78482c58535653c32c6F5F) |
+> | [AdjectiveDictionaryV1](./src/dictionary/AdjectiveDictionaryV1.sol) | [`0x646DE5f446c1287bF41B737BA541318EF97aF222`](https://explorer.testnet.rootstock.io/address/0x646DE5f446c1287bF41B737BA541318EF97aF222) |
 
 </details>
 
@@ -159,7 +159,7 @@ forge script script/DeployNamesV1.s.sol:DeployNamesV1 \
 6. To verify the contracts, you need to grab the address from `deployments.json` and run the following,
 ```sh
 # Run this to verify all dictionary contracts
-forge verify-contract \     
+forge verify-contract \
 --constructor-args $(cast abi-encode "constructor(address)" <data-contract>) \
 --chain-id 31 --watch --compiler-version v0.8.28 \
 --verifier custom \
@@ -168,7 +168,7 @@ forge verify-contract \
 <dictionary-file-path>:<dictionary-contract-name>
 
 # Run this to verify main utility contract
-forge verify-contract \                                                
+forge verify-contract \
 --constructor-args $(cast abi-encode "constructor(address,address,address)" <animal-dictionary-contract-addr> <color-dictionary-contract-addr> <adjective-dictionary-contract-addr>) \
 --chain-id 31 --watch --compiler-version v0.8.28 \
 --verifier custom \

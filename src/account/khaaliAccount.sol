@@ -5,6 +5,8 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {Receiver} from "solady/accounts/Receiver.sol";
+import {ECDSA} from "solady/utils/ECDSA.sol";
+import {LibERC7579} from "solady/accounts/LibERC7579.sol";
 import {IkhaaliAccount} from "./IkhaaliAccount.sol";
 
 /// @title khaaliAccount
@@ -94,11 +96,23 @@ contract khaaliAccount is
 
     /// @inheritdoc IkhaaliAccount
     function validateUserOp(
-        PackedUserOperation calldata, /*userOp*/
-        bytes32, /*userOpHash*/
-        uint256 /*missingAccountFunds*/
+        PackedUserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 missingAccountFunds
     ) external payable returns (uint256) {
-        revert("not yet implemented");
+        require(hasRole(ENTRYPOINT_ROLE, msg.sender), "khaaliAccount: caller is not entrypoint");
+
+        bytes32 ethSignedHash = ECDSA.toEthSignedMessageHash(userOpHash);
+        address signer = ECDSA.tryRecover(ethSignedHash, userOp.signature);
+
+        if (signer != address(0) && hasRole(OWNER_ROLE, signer)) {
+            if (missingAccountFunds > 0) {
+                (bool success,) = msg.sender.call{value: missingAccountFunds}("");
+                require(success, "khaaliAccount: prefund failed");
+            }
+            return 0; // SIG_VALIDATION_SUCCESS
+        }
+        return 1; // SIG_VALIDATION_FAILED
     }
 
     // -------------------------------------------------------------------------
@@ -106,16 +120,21 @@ contract khaaliAccount is
     // -------------------------------------------------------------------------
 
     /// @inheritdoc IkhaaliAccount
-    function execute(bytes32, /*mode*/ bytes calldata /*executionData*/) external payable {
-        revert("not yet implemented");
+    function execute(bytes32 mode, bytes calldata executionData) external payable {
+        require(
+            hasRole(OWNER_ROLE, msg.sender) || hasRole(ENTRYPOINT_ROLE, msg.sender),
+            "khaaliAccount: caller lacks OWNER_ROLE or ENTRYPOINT_ROLE"
+        );
+        _executeInternal(mode, executionData);
     }
 
     /// @inheritdoc IkhaaliAccount
     function executeFromExecutor(
-        bytes32, /*mode*/
-        bytes calldata /*executionData*/
+        bytes32 mode,
+        bytes calldata executionData
     ) external returns (bytes[] memory) {
-        revert("not yet implemented");
+        require(hasRole(MODULE_ROLE, msg.sender), "khaaliAccount: caller lacks MODULE_ROLE");
+        return _executeInternalWithReturn(mode, executionData);
     }
 
     // -------------------------------------------------------------------------
@@ -124,29 +143,57 @@ contract khaaliAccount is
 
     /// @inheritdoc IkhaaliAccount
     function installModule(
-        uint256, /*moduleTypeId*/
-        address, /*module*/
-        bytes calldata /*initData*/
+        uint256 moduleTypeId,
+        address module,
+        bytes calldata initData
     ) external {
-        revert("not yet implemented");
+        require(
+            hasRole(OWNER_ROLE, msg.sender) || hasRole(MANAGER_ROLE, msg.sender),
+            "khaaliAccount: caller lacks OWNER_ROLE or MANAGER_ROLE"
+        );
+        _modules[moduleTypeId][module] = true;
+        // If executor module (type 2), grant MODULE_ROLE so it can call executeFromExecutor
+        if (moduleTypeId == 2) {
+            _grantRole(MODULE_ROLE, module);
+        }
+        // If initData is non-empty, call module.onInstall(initData)
+        if (initData.length > 0) {
+            (bool success,) = module.call(abi.encodeWithSignature("onInstall(bytes)", initData));
+            require(success, "khaaliAccount: onInstall call failed");
+        }
+        emit ModuleInstalled(moduleTypeId, module);
     }
 
     /// @inheritdoc IkhaaliAccount
     function uninstallModule(
-        uint256, /*moduleTypeId*/
-        address, /*module*/
-        bytes calldata /*deInitData*/
+        uint256 moduleTypeId,
+        address module,
+        bytes calldata deInitData
     ) external {
-        revert("not yet implemented");
+        require(
+            hasRole(OWNER_ROLE, msg.sender) || hasRole(MANAGER_ROLE, msg.sender),
+            "khaaliAccount: caller lacks OWNER_ROLE or MANAGER_ROLE"
+        );
+        _modules[moduleTypeId][module] = false;
+        // If executor module (type 2), revoke MODULE_ROLE
+        if (moduleTypeId == 2) {
+            _revokeRole(MODULE_ROLE, module);
+        }
+        // If deInitData is non-empty, call module.onUninstall(deInitData)
+        if (deInitData.length > 0) {
+            (bool success,) = module.call(abi.encodeWithSignature("onUninstall(bytes)", deInitData));
+            require(success, "khaaliAccount: onUninstall call failed");
+        }
+        emit ModuleUninstalled(moduleTypeId, module);
     }
 
     /// @inheritdoc IkhaaliAccount
     function isModuleInstalled(
-        uint256, /*moduleTypeId*/
-        address, /*module*/
+        uint256 moduleTypeId,
+        address module,
         bytes calldata /*additionalContext*/
     ) external view returns (bool) {
-        revert("not yet implemented");
+        return _modules[moduleTypeId][module];
     }
 
     // -------------------------------------------------------------------------
@@ -159,13 +206,14 @@ contract khaaliAccount is
     }
 
     /// @inheritdoc IkhaaliAccount
-    function supportsExecutionMode(bytes32 /*mode*/) external pure returns (bool) {
-        revert("not yet implemented");
+    function supportsExecutionMode(bytes32 mode) external pure returns (bool) {
+        bytes1 callType = LibERC7579.getCallType(mode);
+        return callType == LibERC7579.CALLTYPE_SINGLE || callType == LibERC7579.CALLTYPE_BATCH;
     }
 
     /// @inheritdoc IkhaaliAccount
-    function supportsModule(uint256 /*moduleTypeId*/) external pure returns (bool) {
-        revert("not yet implemented");
+    function supportsModule(uint256 moduleTypeId) external pure returns (bool) {
+        return moduleTypeId >= 1 && moduleTypeId <= 3;
     }
 
     // -------------------------------------------------------------------------
@@ -174,10 +222,15 @@ contract khaaliAccount is
 
     /// @inheritdoc IkhaaliAccount
     function isValidSignature(
-        bytes32, /*hash*/
-        bytes calldata /*signature*/
-    ) external pure returns (bytes4) {
-        revert("not yet implemented");
+        bytes32 hash,
+        bytes calldata signature
+    ) external view returns (bytes4) {
+        bytes32 ethSignedHash = ECDSA.toEthSignedMessageHash(hash);
+        address signer = ECDSA.tryRecover(ethSignedHash, signature);
+        if (signer != address(0) && hasRole(OWNER_ROLE, signer)) {
+            return bytes4(0x1626ba7e);
+        }
+        return bytes4(0xffffffff);
     }
 
     // -------------------------------------------------------------------------
@@ -193,7 +246,57 @@ contract khaaliAccount is
         returns (bool)
     {
         return interfaceId == type(IkhaaliAccount).interfaceId
+            || interfaceId == bytes4(0x1626ba7e) // ERC-1271
             || super.supportsInterface(interfaceId);
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal Execution Helpers
+    // -------------------------------------------------------------------------
+
+    /// @dev Shared execution logic for `execute` (no return values).
+    function _executeInternal(bytes32 mode, bytes calldata executionData) internal {
+        bytes1 callType = LibERC7579.getCallType(mode);
+        if (callType == LibERC7579.CALLTYPE_SINGLE) {
+            (address target, uint256 value, bytes calldata data) = LibERC7579.decodeSingle(executionData);
+            (bool success,) = target.call{value: value}(data);
+            require(success, "khaaliAccount: single execution failed");
+        } else if (callType == LibERC7579.CALLTYPE_BATCH) {
+            bytes32[] calldata pointers = LibERC7579.decodeBatch(executionData);
+            for (uint256 i = 0; i < pointers.length; i++) {
+                (address target, uint256 value, bytes calldata data) = LibERC7579.getExecution(pointers, i);
+                (bool success,) = target.call{value: value}(data);
+                require(success, "khaaliAccount: batch execution failed");
+            }
+        } else {
+            revert("khaaliAccount: unsupported call type");
+        }
+    }
+
+    /// @dev Shared execution logic for `executeFromExecutor` (returns call results).
+    function _executeInternalWithReturn(bytes32 mode, bytes calldata executionData)
+        internal
+        returns (bytes[] memory results)
+    {
+        bytes1 callType = LibERC7579.getCallType(mode);
+        if (callType == LibERC7579.CALLTYPE_SINGLE) {
+            (address target, uint256 value, bytes calldata data) = LibERC7579.decodeSingle(executionData);
+            (bool success, bytes memory result) = target.call{value: value}(data);
+            require(success, "khaaliAccount: single execution failed");
+            results = new bytes[](1);
+            results[0] = result;
+        } else if (callType == LibERC7579.CALLTYPE_BATCH) {
+            bytes32[] calldata pointers = LibERC7579.decodeBatch(executionData);
+            results = new bytes[](pointers.length);
+            for (uint256 i = 0; i < pointers.length; i++) {
+                (address target, uint256 value, bytes calldata data) = LibERC7579.getExecution(pointers, i);
+                (bool success, bytes memory result) = target.call{value: value}(data);
+                require(success, "khaaliAccount: batch execution failed");
+                results[i] = result;
+            }
+        } else {
+            revert("khaaliAccount: unsupported call type");
+        }
     }
 
     // -------------------------------------------------------------------------
